@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.1.32228.430
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XlsxMarge", "XlsxMarge\XlsxMarge.csproj", "{F91324C8-E256-40F2-B3A5-C957BEFDF165}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F91324C8-E256-40F2-B3A5-C957BEFDF165}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F91324C8-E256-40F2-B3A5-C957BEFDF165}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F91324C8-E256-40F2-B3A5-C957BEFDF165}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F91324C8-E256-40F2-B3A5-C957BEFDF165}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {91445E6D-2C61-4510-B9CC-AC98E3160AB0}
+	EndGlobalSection
+EndGlobal
