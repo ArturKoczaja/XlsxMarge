@@ -2,73 +2,125 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
 
 namespace XlsxMarge
 {
-    internal class Program
+    public class XlsxMarge
     {
-        private static readonly string _sheetName = "xl/worksheets/sheet1.xml";
-        private static readonly string _sharedStringsName = "xl/sharedStrings.xml";
+        private readonly string _sheetName = "xl/worksheets/sheet1.xml";
+        private readonly string _sharedStringsName = "xl/sharedStrings.xml";
+
+        private readonly string[] _inputFiles = new string[]
+        {
+            @"Res\test1.xlsx",
+            @"Res\test2.xlsx"
+        };
+
+        private readonly string[] _outputFiles = new string[]
+        {
+            @"output.xlsx"
+        };
 
         static void Main(string[] args)
         {
-            string[] inputFiles = new string[]
-            {
-                @"Res\test1.xlsx",
-                @"Res\test2.xlsx"
-            };
 
-            string[] outputFiles = new string[]
-            {
-                @"output.xlsx"
-            };
+
+            XlsxMarge mergeProgram = new XlsxMarge();
+            mergeProgram.Run();
+
+
+        }
+
+        private void Run()
+        {
+
+            UnzipXlsxFiles(_inputFiles);
+
+            Console.ReadKey();
 
             // Load xlsx files as byte[] and add them to documentItemList. Do it in separated static method.
             //var documentItemList = new List<DocumentItem>();
 
-            UnzipXlsxFiles(inputFiles);
-
-            Console.ReadKey();
             //var xlsXlsArchiveService = new XlsArchiveService();
             //var xlsxFileMergingService = new XlsxFileMergingService(xlsXlsArchiveService);
             //var result = xlsxFileMergingService.MergeFiles(documentItemList);
         }
 
 
-        public static void UnzipXlsxFiles(string[] inputFiles, List<object> documentList = null)
+        public List<SheetEntry> UnzipXlsxFiles(string[] inputFiles, List<object> documentList = null)
         {
-
+            List<SheetEntry> sheets = new List<SheetEntry>();
             foreach (var file in inputFiles)
             {
-                using (FileStream fs = File.OpenRead(file))
-                {
-                    using (var zf = new ZipFile(fs))
-                    {
-                        foreach (ZipEntry zipEntry in zf)
-                        {
-                            if (!zipEntry.IsFile)
-                            {
-                                continue; // Ignore directories
-                            }
-                           
-                            String entryFileName = zipEntry.Name;
-                            //Console.WriteLine(entryFileName);
-                            if (entryFileName == _sheetName)
-                            {
-                                Console.WriteLine(entryFileName);
-                            }
-                            if (entryFileName == _sharedStringsName)
-                            {
-                                Console.WriteLine(entryFileName);
+                sheets.Add(ExtractSheetFiles(file));
 
-                            }
+            }
+            //foreach (var sheet in sheets)
+            //{
+            //    Console.WriteLine(sheet.FileName);
+            //}
+            return sheets;
+        }
+
+        private SheetEntry ExtractSheetFiles(string file)
+        {
+            using (FileStream fs = File.OpenRead(file))
+            {
+                using (var zf = new ZipFile(fs))
+                {
+                    int cnt = 0;
+                    MemoryStream sheetStream = null;
+                    MemoryStream stringStream = null;
+
+                    foreach (ZipEntry zipEntry in zf)
+                    {
+                        if (!zipEntry.IsFile)
+                        {
+                            continue; // Ignore directories
+                        }
+
+                        String entryFileName = zipEntry.Name;
+                        //Console.WriteLine(entryFileName);
+                        if (entryFileName == _sheetName)
+                        {
+                            sheetStream = ZipEntryToStream(zf, zipEntry);
+                            cnt++;
+                        }
+
+                        if (entryFileName == _sharedStringsName)
+                        {
+                            stringStream = ZipEntryToStream(zf, zipEntry);
+                            cnt++;
+                        }
+
+                        if (cnt == 2)
+                        {
+                            // if both files read we can stop
+                            break;
                         }
                     }
-                }
 
-               
+                    if (sheetStream == null || stringStream == null) return null;
+                    return new SheetEntry()
+                    {
+                        FileName = file,
+                        SheetStream = sheetStream,
+                        StringStream = stringStream
+                    };
+                }
             }
+        }
+
+        private MemoryStream ZipEntryToStream(ZipFile zf, ZipEntry zipEntry)
+        {
+            byte[] buffer = new byte[4096];     // 4K is optimum
+            Stream zipStream = zf.GetInputStream(zipEntry);
+            MemoryStream streamWriter = new MemoryStream();
+            StreamUtils.Copy(zipStream, streamWriter, buffer);
+            return streamWriter;
+
         }
 
         public static void LoadXlsxFiles(string[] inputFiles, List<DocumentItem> documentList)
@@ -83,6 +135,13 @@ namespace XlsxMarge
                 });
             }
         }
+    }
+
+    public class SheetEntry
+    {
+        public string FileName { get; set; }
+        public MemoryStream SheetStream { get; set; }
+        public MemoryStream StringStream { get; set; }
     }
 
     public class XlsArchiveService : IXlsArchiveService
