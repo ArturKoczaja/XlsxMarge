@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
+using System.Linq;
+using System.Xml.Linq;
 using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
 
@@ -11,6 +13,8 @@ namespace XlsxMarge
     {
         private readonly string _sheetName = "xl/worksheets/sheet1.xml";
         private readonly string _sharedStringsName = "xl/sharedStrings.xml";
+
+        //private readonly Dictionary<int, string> stringDictionary = new Dictionary<int, string>();
 
         private readonly string[] _inputFiles = new string[]
         {
@@ -26,17 +30,32 @@ namespace XlsxMarge
         static void Main(string[] args)
         {
 
-
             XlsxMarge mergeProgram = new XlsxMarge();
             mergeProgram.Run();
-
 
         }
 
         private void Run()
         {
 
-            UnzipXlsxFiles(_inputFiles);
+            var sheets = UnzipXlsxFiles(_inputFiles);
+            int cnt = 0;
+
+            // create dictionary
+            foreach (var sheet in sheets)
+            {
+                XDocument xDoc;
+                xDoc = XDocument.Load(sheet.StringStream);
+
+                // to do convert to dictionary
+                var strings = xDoc.Root.Descendants().Where(n => n.Name.LocalName == "si").Select(si => (si.FirstNode as System.Xml.Linq.XElement).Value).ToList();
+    
+                cnt++;
+                //using (FileStream fs = File.OpenWrite($"sheet{cnt}"))
+                //{
+                //    fs.Write(sheet.SheetStream, 0, sheet.SheetStream.);
+                //}
+            }
 
             Console.ReadKey();
 
@@ -86,12 +105,14 @@ namespace XlsxMarge
                         if (entryFileName == _sheetName)
                         {
                             sheetStream = ZipEntryToStream(zf, zipEntry);
+                            sheetStream.Position = 0;
                             cnt++;
                         }
 
                         if (entryFileName == _sharedStringsName)
                         {
                             stringStream = ZipEntryToStream(zf, zipEntry);
+                            stringStream.Position = 0;
                             cnt++;
                         }
 
