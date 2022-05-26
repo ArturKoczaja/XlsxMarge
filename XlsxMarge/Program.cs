@@ -8,15 +8,15 @@ namespace XlsxMarge
 {
     internal class Program
     {
-        private static readonly string _sheetName = "sheet1.xml";
-        private static readonly string _sharedStringsName = "sharedStrings.xml";
+        private static readonly string _sheetName = "xl/worksheets/sheet1.xml";
+        private static readonly string _sharedStringsName = "xl/sharedStrings.xml";
 
         static void Main(string[] args)
         {
             string[] inputFiles = new string[]
             {
-                @"test1.xlsx",
-                @"test2.xlsx"
+                @"Res\test1.xlsx",
+                @"Res\test2.xlsx"
             };
 
             string[] outputFiles = new string[]
@@ -25,22 +25,18 @@ namespace XlsxMarge
             };
 
             // Load xlsx files as byte[] and add them to documentItemList. Do it in separated static method.
-            var documentItemList = new List<DocumentItem>();
+            //var documentItemList = new List<DocumentItem>();
 
-            LoadXlsxFiles(inputFiles, documentItemList);
+            UnzipXlsxFiles(inputFiles);
 
-            foreach (var file in documentItemList)
-            {
-                Console.Write(documentItemList + " ");
-            }
-
-            var xlsXlsArchiveService = new XlsArchiveService();
-            var xlsxFileMergingService = new XlsxFileMergingService(xlsXlsArchiveService);
-            var result = xlsxFileMergingService.MergeFiles(documentItemList);
+            Console.ReadKey();
+            //var xlsXlsArchiveService = new XlsArchiveService();
+            //var xlsxFileMergingService = new XlsxFileMergingService(xlsXlsArchiveService);
+            //var result = xlsxFileMergingService.MergeFiles(documentItemList);
         }
 
 
-        public static void UnzipXlsxFiles(string[] inputFiles, List<object> documentList)
+        public static void UnzipXlsxFiles(string[] inputFiles, List<object> documentList = null)
         {
 
             foreach (var file in inputFiles)
@@ -55,14 +51,16 @@ namespace XlsxMarge
                             {
                                 continue; // Ignore directories
                             }
-
+                           
                             String entryFileName = zipEntry.Name;
+                            //Console.WriteLine(entryFileName);
                             if (entryFileName == _sheetName)
                             {
-
+                                Console.WriteLine(entryFileName);
                             }
                             if (entryFileName == _sharedStringsName)
                             {
+                                Console.WriteLine(entryFileName);
 
                             }
                         }
