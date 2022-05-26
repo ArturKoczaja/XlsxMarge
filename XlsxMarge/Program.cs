@@ -1,33 +1,38 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
+using ICSharpCode.SharpZipLib.Zip;
 
 namespace XlsxMarge
 {
     internal class Program
     {
+        private static readonly string _sheetName = "sheet1.xml";
+        private static readonly string _sharedStringsName = "sharedStrings.xml";
+
         static void Main(string[] args)
         {
             string[] inputFiles = new string[]
             {
-                @"C:\tfs\trening\excelFile\1RX3015_20220512_Testberekening - XLSX_1.xlsx",
-                @"C:\tfs\trening\excelFile\1RX3015_20220512_Testberekening - XLSX_2.xlsx"
+                @"test1.xlsx",
+                @"test2.xlsx"
             };
 
             string[] outputFiles = new string[]
             {
-                @"C:\tfs\trening\excelFile\output.xlsx"
+                @"output.xlsx"
             };
 
             // Load xlsx files as byte[] and add them to documentItemList. Do it in separated static method.
             var documentItemList = new List<DocumentItem>();
+
+            LoadXlsxFiles(inputFiles, documentItemList);
+
             foreach (var file in documentItemList)
             {
                 Console.Write(documentItemList + " ");
             }
-
-
-            LoadXlsxFile(inputFiles);
 
             var xlsXlsArchiveService = new XlsArchiveService();
             var xlsxFileMergingService = new XlsxFileMergingService(xlsXlsArchiveService);
@@ -35,10 +40,50 @@ namespace XlsxMarge
         }
 
 
-        public static void LoadXlsxFile(string[] inputFiles)
+        public static void UnzipXlsxFiles(string[] inputFiles, List<object> documentList)
         {
-            var loadFile = File.ReadAllBytes(inputFiles[1]);
-            
+
+            foreach (var file in inputFiles)
+            {
+                using (FileStream fs = File.OpenRead(file))
+                {
+                    using (var zf = new ZipFile(fs))
+                    {
+                        foreach (ZipEntry zipEntry in zf)
+                        {
+                            if (!zipEntry.IsFile)
+                            {
+                                continue; // Ignore directories
+                            }
+
+                            String entryFileName = zipEntry.Name;
+                            if (entryFileName == _sheetName)
+                            {
+
+                            }
+                            if (entryFileName == _sharedStringsName)
+                            {
+
+                            }
+                        }
+                    }
+                }
+
+               
+            }
+        }
+
+        public static void LoadXlsxFiles(string[] inputFiles, List<DocumentItem> documentList)
+        {
+            foreach (var file in inputFiles)
+            {
+                var loadFile = File.ReadAllBytes(file);
+                documentList.Add(new DocumentItem()
+                {
+                    Data = loadFile,
+                    Filename = file
+                });
+            }
         }
     }
 
@@ -111,12 +156,8 @@ namespace XlsxMarge
 
     public class DocumentItem
     {
-        // in documentStore the same filename can be represented by multiple files
         public string Filename { get; set; }
-
-        // Collection of multiple data
-        // byte[] is single file
-        public IEnumerable<byte[]> Data { get; set; }
+        public byte[] Data { get; set; }
     }
 
     public class XlsFileToMerge
