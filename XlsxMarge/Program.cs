@@ -4,6 +4,8 @@ using System.IO;
 using System.IO.Compression;
 using System.Linq;
 using System.Xml.Linq;
+using System.Xml.XPath;
+using Common.Logging.Factory;
 using ICSharpCode.SharpZipLib.Core;
 using ICSharpCode.SharpZipLib.Zip;
 
@@ -35,36 +37,173 @@ namespace XlsxMarge
 
         }
 
+        public class Cell
+        {
+            public Boolean Translate { get; set; }
+            public string Value { get; set; }
+        }
+
         private void Run()
         {
 
-            var sheets = UnzipXlsxFiles(_inputFiles);
-            int cnt = 0;
+            var files = UnzipXlsxFiles(_inputFiles);
+
+
+            List<List<Cell>> allRows = new List<List<Cell>>();
+
+
+            Boolean addHeaders = true;
 
             // create dictionary
-            foreach (var sheet in sheets)
+            foreach (var file in files)
             {
-                XDocument xDoc;
-                xDoc = XDocument.Load(sheet.StringStream);
+                var tmpDictionary = CreateTmpDictionary(file);
 
-                // to do convert to dictionary
-                var strings = xDoc.Root.Descendants().Where(n => n.Name.LocalName == "si").Select(si => (si.FirstNode as System.Xml.Linq.XElement).Value).ToList();
-    
-                cnt++;
-                //using (FileStream fs = File.OpenWrite($"sheet{cnt}"))
-                //{
-                //    fs.Write(sheet.SheetStream, 0, sheet.SheetStream.);
-                //}
+                // List<string> tmpRows = new List<string>();
+                var rows = ReadRows(file);
+
+                MergeRows(rows,ref addHeaders, allRows, tmpDictionary);
+            }
+
+            WriteResultToConsole(allRows);
+
+            var allStrings = CreateStringsDictionary(allRows);
+
+
+            WriteAllStringsToConsole(allStrings);
+        }
+
+        private static void WriteAllStringsToConsole(Dictionary<string, long> allStrings)
+        {
+            foreach (var str in allStrings)
+            {
+                Console.WriteLine($"{str.Value}:\t\t\t{str.Key}");
             }
 
             Console.ReadKey();
+        }
 
-            // Load xlsx files as byte[] and add them to documentItemList. Do it in separated static method.
-            //var documentItemList = new List<DocumentItem>();
+        private static Dictionary<string, long> CreateStringsDictionary(List<List<Cell>> allRows)
+        {
+            long cnt = 0;
+            Dictionary<string, long> allStrings = new Dictionary<string, long>();
+            foreach (var row in allRows)
+            {
+                foreach (var cell in row)
+                {
+                    if (cell.Translate)
+                    {
+                        if (!allStrings.ContainsKey(cell.Value))
+                        {
+                            allStrings.Add(cell.Value, cnt);
+                            cnt++;
+                        }
+                    }
+                }
+            }
 
-            //var xlsXlsArchiveService = new XlsArchiveService();
-            //var xlsxFileMergingService = new XlsxFileMergingService(xlsXlsArchiveService);
-            //var result = xlsxFileMergingService.MergeFiles(documentItemList);
+            return allStrings;
+        }
+
+        private bool MergeRows(IEnumerable<List<Cell>> rows, ref bool addHeaders, List<List<Cell>> allRows, Dictionary<int, string> tmpDictionary)
+        {
+            int cnt = 0;
+            foreach (var row in rows)
+            {
+                if (addHeaders == false && cnt == 0)
+                {
+                }
+                else
+                {
+                    allRows.Add(TranslateRow(row, tmpDictionary));
+                    if (addHeaders == true)
+                    {
+                        addHeaders = false;
+                    }
+                }
+
+                cnt++;
+            }
+
+            return addHeaders;
+        }
+
+        private static IEnumerable<List<Cell>> ReadRows(SheetEntry file)
+        {
+            XDocument xDocSheet;
+            xDocSheet = XDocument.Load(file.SheetStream);
+
+            var xxx = xDocSheet.Root.Descendants()
+                .Where(n => n.Name.LocalName == "row");
+
+            var rows = xxx.Select(row => row.Descendants()
+                .Where(n => n.Name.LocalName == "c").Select(n => new Cell()
+                    {
+                        Translate = (n as XElement).Attributes().FirstOrDefault(a => a.Name.LocalName == "t")?.Value == "s"
+                            ? true
+                            : false,
+                        Value = (n as System.Xml.Linq.XElement).Value
+                    }
+                )
+                .ToList<Cell>());
+            return rows;
+        }
+
+        private static Dictionary<int, string> CreateTmpDictionary(SheetEntry file)
+        {
+            XDocument xDocStrings;
+            xDocStrings = XDocument.Load(file.StringStream);
+
+            // to do convert to dictionary
+            var strings = xDocStrings.Root.Descendants()
+                .Where(n => n.Name.LocalName == "si")
+                .Select((si, index) =>
+                    new KeyValuePair<int, string>(index, (si.FirstNode as System.Xml.Linq.XElement).Value));
+
+            var tmpDictionary = strings.ToDictionary(e => e.Key, e => e.Value);
+            return tmpDictionary;
+        }
+
+        private static void WriteResultToConsole(List<List<Cell>> allRows)
+        {
+            foreach (var row in allRows)
+            {
+                foreach (var cell in row)
+                {
+                    Console.Write($"{cell.Value} ");
+                }
+
+                Console.WriteLine();
+            }
+
+            Console.ReadKey();
+        }
+
+        private List<Cell> TranslateRow(List<Cell> row, Dictionary<int, string> tmpDictionary)
+        {
+            List<Cell> result = new List<Cell>();
+            foreach (var cell in row)
+            {
+                if (cell.Translate)
+                {
+                    bool _ = int.TryParse(cell.Value, out var index);
+                    result.Add( new Cell()
+                    {
+                        Translate = cell.Translate,
+                        Value = tmpDictionary[index]
+                    });
+                }
+                else
+                {
+                    result.Add(new Cell()
+                    {
+                        Translate = cell.Translate,
+                        Value = cell.Value
+                    });
+                }
+            }
+
+            return result;
         }
 
 
