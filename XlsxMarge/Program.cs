@@ -24,10 +24,7 @@ namespace XlsxMarge
             @"Res\test2.xlsx"
         };
 
-        private readonly string[] _outputFiles = new string[]
-        {
-            @"output.xlsx"
-        };
+        private readonly string _outputFile = @"output.xlsx";
 
         static void Main(string[] args)
         {
@@ -48,7 +45,6 @@ namespace XlsxMarge
 
             var files = UnzipXlsxFiles(_inputFiles);
 
-
             List<List<Cell>> allRows = new List<List<Cell>>();
 
 
@@ -62,15 +58,18 @@ namespace XlsxMarge
                 // List<string> tmpRows = new List<string>();
                 var rows = ReadRows(file);
 
-                MergeRows(rows,ref addHeaders, allRows, tmpDictionary);
+                MergeRows(rows, ref addHeaders, allRows, tmpDictionary);
             }
 
-            WriteResultToConsole(allRows);
+            // WriteResultToConsole(allRows);
 
             var allStrings = CreateStringsDictionary(allRows);
 
 
-            WriteAllStringsToConsole(allStrings);
+            // WriteAllStringsToConsole(allStrings);
+
+            PrepareOutputFile(_inputFiles[0], _outputFile);
+
         }
 
         private static void WriteAllStringsToConsole(Dictionary<string, long> allStrings)
@@ -138,12 +137,12 @@ namespace XlsxMarge
 
             var rows = xxx.Select(row => row.Descendants()
                 .Where(n => n.Name.LocalName == "c").Select(n => new Cell()
-                    {
-                        Translate = (n as XElement).Attributes().FirstOrDefault(a => a.Name.LocalName == "t")?.Value == "s"
+                {
+                    Translate = (n as XElement).Attributes().FirstOrDefault(a => a.Name.LocalName == "t")?.Value == "s"
                             ? true
                             : false,
-                        Value = (n as System.Xml.Linq.XElement).Value
-                    }
+                    Value = (n as System.Xml.Linq.XElement).Value
+                }
                 )
                 .ToList<Cell>());
             return rows;
@@ -187,7 +186,7 @@ namespace XlsxMarge
                 if (cell.Translate)
                 {
                     bool _ = int.TryParse(cell.Value, out var index);
-                    result.Add( new Cell()
+                    result.Add(new Cell()
                     {
                         Translate = cell.Translate,
                         Value = tmpDictionary[index]
@@ -220,6 +219,61 @@ namespace XlsxMarge
             //    Console.WriteLine(sheet.FileName);
             //}
             return sheets;
+        }
+
+        private void PrepareOutputFile(string filePath, string outputPath)
+        {
+            if (File.Exists(outputPath))
+            {
+                File.Delete(outputPath);
+            }
+
+            File.Copy(filePath, outputPath);
+
+            using (FileStream fs = File.OpenRead(outputPath))
+            {
+                using (var zf = new ZipFile(fs))
+                {
+                    zf.BeginUpdate();
+
+
+                    foreach (ZipEntry zipEntry in zf)
+                    {
+                        if (!zipEntry.IsFile)
+                        {
+                            continue; // Ignore directories
+                        }
+
+                        String entryFileName = zipEntry.Name;
+                        if (entryFileName == _sheetName)
+                        {
+
+                            //sheetStream = ZipEntryToStream(zf, zipEntry);
+                            //sheetStream.Position = 0;
+                            // remove data rows
+
+                            zf.Delete(zipEntry);
+
+                            //add modified file
+                        }
+
+                        if (entryFileName == _sharedStringsName)
+                        {
+                            //stringStream = ZipEntryToStream(zf, zipEntry);
+                            //stringStream.Position = 0;
+
+                            // remove strings
+                            zf.Delete(zipEntry);
+
+                            //add modified file
+                        }
+                    }
+
+                    zf.CommitUpdate();
+                }
+
+               
+            }
         }
 
         private SheetEntry ExtractSheetFiles(string file)
