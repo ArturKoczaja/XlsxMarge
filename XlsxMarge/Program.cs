@@ -230,50 +230,138 @@ namespace XlsxMarge
 
             File.Copy(filePath, outputPath);
 
-            using (FileStream fs = File.OpenRead(outputPath))
+            using FileStream fs = File.OpenRead(outputPath);
+            using var zf = new ZipFile(fs);
+
+            MemoryStream sheetStream = null;
+            MemoryStream stringsStream = null;
+
+            ReadFileToByteArrays(zf, ref sheetStream, ref stringsStream);
+
+            RemoveSheetAndStringsFiles(zf);
+
+            var outSheetStream = RemoveSheetData(sheetStream);
+            var outStringsStream = RemoveStringsData(stringsStream);
+
+           
+            zf.BeginUpdate();
+
+            var sheetDataSource = new CustomStaticDataSource();
+            sheetDataSource.SetStream(outSheetStream);
+            zf.Add(sheetDataSource, _sheetName);
+
+            var stringsDataSource = new CustomStaticDataSource();
+            stringsDataSource.SetStream(outStringsStream);
+            zf.Add(stringsDataSource, _sharedStringsName);
+
+            zf.CommitUpdate();
+            
+            //Console.Write(sheetStream);
+            //Console.Write(stringsStream);
+
+        }
+
+        public class CustomStaticDataSource : IStaticDataSource
+        {
+            private Stream _stream;
+            // Implement method from IStaticDataSource
+            public Stream GetSource()
             {
-                using (var zf = new ZipFile(fs))
+                return _stream;
+            }
+
+            // Call this to provide the memorystream
+            public void SetStream(Stream inputStream)
+            {
+                _stream = inputStream;
+                _stream.Position = 0;
+            }
+        }
+
+        private static MemoryStream RemoveSheetData(MemoryStream sheetStream)
+        {
+            XDocument xDocSheet;
+            xDocSheet = XDocument.Load(sheetStream);
+
+            var sheetData = xDocSheet.Root.Descendants()
+                .First(n => n.Name.LocalName == "sheetData");
+
+            sheetData.RemoveAll();
+
+            MemoryStream outputStream = new MemoryStream();
+            xDocSheet.Save(outputStream);
+            // Rewind the stream ready to read from it elsewhere
+            outputStream.Position = 0;
+            return outputStream;
+        }
+
+        private static MemoryStream RemoveStringsData(MemoryStream stringsStream)
+        {
+            XDocument xDocStrings;
+            xDocStrings = XDocument.Load(stringsStream);
+
+            //var sheetData = xDocSheet.Root.Descendants()
+            //    .First(n => n.Name.LocalName == "sst");
+
+            xDocStrings.Root?.RemoveAll();
+
+            MemoryStream outputStream = new MemoryStream();
+            xDocStrings.Save(outputStream);
+            // Rewind the stream ready to read from it elsewhere
+            outputStream.Position = 0;
+            return outputStream;
+        }
+
+        private void ReadFileToByteArrays(ZipFile zf, ref MemoryStream sheetStream, ref MemoryStream stringsStream)
+        {
+            foreach (ZipEntry zipEntry in zf)
+            {
+                if (!zipEntry.IsFile)
                 {
-                    zf.BeginUpdate();
-
-
-                    foreach (ZipEntry zipEntry in zf)
-                    {
-                        if (!zipEntry.IsFile)
-                        {
-                            continue; // Ignore directories
-                        }
-
-                        String entryFileName = zipEntry.Name;
-                        if (entryFileName == _sheetName)
-                        {
-
-                            //sheetStream = ZipEntryToStream(zf, zipEntry);
-                            //sheetStream.Position = 0;
-                            // remove data rows
-
-                            zf.Delete(zipEntry);
-
-                            //add modified file
-                        }
-
-                        if (entryFileName == _sharedStringsName)
-                        {
-                            //stringStream = ZipEntryToStream(zf, zipEntry);
-                            //stringStream.Position = 0;
-
-                            // remove strings
-                            zf.Delete(zipEntry);
-
-                            //add modified file
-                        }
-                    }
-
-                    zf.CommitUpdate();
+                    continue; // Ignore directories
                 }
 
-               
+                String entryFileName = zipEntry.Name;
+                if (entryFileName == _sheetName)
+                {
+                    sheetStream = ZipEntryToStream(zf, zipEntry);
+                    sheetStream.Position = 0;
+                    //byte[] sheetData = stringsStream.ToArray();
+                }
+
+                if (entryFileName == _sharedStringsName)
+                {
+                    stringsStream = ZipEntryToStream(zf, zipEntry);
+                    stringsStream.Position = 0;
+                   // byte[] sheetData = stringsStream.ToArray();
+                }
             }
+        }
+
+        private void RemoveSheetAndStringsFiles(ZipFile zf)
+        {
+            zf.BeginUpdate();
+
+            foreach (ZipEntry zipEntry in zf)
+            {
+                if (!zipEntry.IsFile)
+                {
+                    continue; // Ignore directories
+                }
+
+                String entryFileName = zipEntry.Name;
+                if (entryFileName == _sheetName)
+                {
+                    zf.Delete(zipEntry);
+                }
+
+                if (entryFileName == _sharedStringsName)
+                {
+                    zf.Delete(zipEntry);
+                }
+            }
+
+            zf.CommitUpdate();
         }
 
         private SheetEntry ExtractSheetFiles(string file)
