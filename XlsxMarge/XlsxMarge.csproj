@@ -12,7 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
-	<LangVersion>9</LangVersion>
+    <LangVersion>9</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>AnyCPU</PlatformTarget>
@@ -55,8 +55,19 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="CustomStaticDataSource.cs" />
+    <Compile Include="DictionaryHelper.cs" />
+    <Compile Include="FileOperator.cs" />
+    <Compile Include="FilesName.cs" />
+    <Compile Include="IXlsxFileMergingService.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="SheetEntry.cs" />
+    <Compile Include="SheetOperator.cs" />
+    <Compile Include="XlsFileToMerge.cs" />
+    <Compile Include="XlsxFileExtractor.cs" />
+    <Compile Include="XlsxFileMergingService.cs" />
+    <Compile Include="Cell.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
