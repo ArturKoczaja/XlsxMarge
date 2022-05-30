@@ -68,9 +68,13 @@ namespace XlsxMarge
 
             // WriteAllStringsToConsole(allStrings);
 
-            PrepareOutputFile(_inputFiles[0], _outputFile);
+            PrepareOutputFile(_inputFiles[0], _outputFile, allRows, allStrings);
+
+            // WriteToOutputFile(allRows, allStrings, _outputFile);
 
         }
+
+
 
         private static void WriteAllStringsToConsole(Dictionary<string, long> allStrings)
         {
@@ -221,7 +225,38 @@ namespace XlsxMarge
             return sheets;
         }
 
-        private void PrepareOutputFile(string filePath, string outputPath)
+        //private void WriteToOutputFile(List<List<Cell>> allRows, Dictionary<string, long> allStrings, string outputPath)
+        //{
+        //    using FileStream fs = File.OpenRead(outputPath);
+        //    using var zf = new ZipFile(fs);
+
+        //    MemoryStream sheetStream = null;
+        //    MemoryStream stringsStream = null;
+
+        //    ReadFileToByteArrays(zf, ref sheetStream, ref stringsStream);
+
+        //    zf.BeginUpdate();
+
+        //    //FillSheetData(sheetStream, allRows, allStrings);
+        //    FillStringsData(stringsStream, allStrings);
+
+        //    zf.CommitUpdate();
+        //}
+
+        //private void FillStringsData(MemoryStream stringsStream, Dictionary<string, long> allStrings)
+        //{
+        //    XDocument xDocSheet;
+        //    xDocSheet = XDocument.Load(stringsStream);
+
+        //    //var sheetData = xDocSheet.Root.Descendants()
+        //    //    .First(n => n.Name.LocalName == "sst");
+
+
+
+        //    xDocSheet.Save(stringsStream);
+        //}
+
+        private void PrepareOutputFile(string filePath, string outputPath, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
         {
             if (File.Exists(outputPath))
             {
@@ -240,10 +275,12 @@ namespace XlsxMarge
 
             RemoveSheetAndStringsFiles(zf);
 
-            var outSheetStream = RemoveSheetData(sheetStream);
-            var outStringsStream = RemoveStringsData(stringsStream);
+            var outSheetStream = ReplaceSheetData(sheetStream, allRows, allStrings);
+            var outStringsStream = ReplaceStringsData(stringsStream, allStrings);
 
-           
+            // FillStringsData(outStringsStream, allStrings);
+
+
             zf.BeginUpdate();
 
             var sheetDataSource = new CustomStaticDataSource();
@@ -255,7 +292,7 @@ namespace XlsxMarge
             zf.Add(stringsDataSource, _sharedStringsName);
 
             zf.CommitUpdate();
-            
+
             //Console.Write(sheetStream);
             //Console.Write(stringsStream);
 
@@ -278,7 +315,7 @@ namespace XlsxMarge
             }
         }
 
-        private static MemoryStream RemoveSheetData(MemoryStream sheetStream)
+        private static MemoryStream ReplaceSheetData(MemoryStream sheetStream, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
         {
             XDocument xDocSheet;
             xDocSheet = XDocument.Load(sheetStream);
@@ -287,6 +324,35 @@ namespace XlsxMarge
                 .First(n => n.Name.LocalName == "sheetData");
 
             sheetData.RemoveAll();
+            var ns = xDocSheet.Root.Name.Namespace;
+
+            var columnNameArray = GetExcelColumnArray().ToArray();
+
+            int row_cnt = 0;
+            foreach (var row in allRows)
+            {
+               
+                var rowElement = new XElement(ns + "row", new XAttribute("r", row_cnt+1), new XAttribute("spans", "1:15"), new XAttribute("ht", "12,75"));
+                int col_cnt = 0;
+                foreach (var col in row)
+                {
+                  
+                    
+                    var vElement = new XElement(ns + "v", col.Translate ? allStrings[col.Value] : col.Value);
+                    var cElement = new XElement(ns + "c", vElement, 
+                        new XAttribute("r", $"{columnNameArray[col_cnt]}{row_cnt+1}"),
+                        new XAttribute("s", row_cnt == 0 ? "2" : col.Translate? "1" : "3"),
+                        new XAttribute("t", col.Translate ? "s" : "")
+                        );
+
+                    rowElement.Add(cElement);
+                    col_cnt++;
+                }
+
+                sheetData.Add(rowElement);
+                row_cnt++;
+            }
+
 
             MemoryStream outputStream = new MemoryStream();
             xDocSheet.Save(outputStream);
@@ -295,7 +361,18 @@ namespace XlsxMarge
             return outputStream;
         }
 
-        private static MemoryStream RemoveStringsData(MemoryStream stringsStream)
+        static IEnumerable<string> GetExcelColumnArray()
+        {
+            string[] alphabet = { string.Empty, "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z" };
+
+            return from c1 in alphabet
+                from c2 in alphabet
+                from c3 in alphabet.Skip(1)                    // c3 is never empty
+                where c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also empty
+                select c1 + c2 + c3;                 // c3 is never emptywhere c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also emptyselect c1 + c2 + c3;
+        }
+        
+        private static MemoryStream ReplaceStringsData(MemoryStream stringsStream, Dictionary<string, long> allStrings)
         {
             XDocument xDocStrings;
             xDocStrings = XDocument.Load(stringsStream);
@@ -304,6 +381,15 @@ namespace XlsxMarge
             //    .First(n => n.Name.LocalName == "sst");
 
             xDocStrings.Root?.RemoveAll();
+            var ns = xDocStrings.Root.Name.Namespace;
+            foreach (var str in allStrings)
+            {
+                var tElement = new XElement(ns + "t", str.Key);
+                var siElement = new XElement(ns + "si", tElement);
+                //, new XAttribute("xmlns", "http://schemas.openxmlformats.org/spreadsheetml/2006/main"));
+
+                xDocStrings.Root.Add(siElement);
+            }
 
             MemoryStream outputStream = new MemoryStream();
             xDocStrings.Save(outputStream);
@@ -333,7 +419,7 @@ namespace XlsxMarge
                 {
                     stringsStream = ZipEntryToStream(zf, zipEntry);
                     stringsStream.Position = 0;
-                   // byte[] sheetData = stringsStream.ToArray();
+                    // byte[] sheetData = stringsStream.ToArray();
                 }
             }
         }
