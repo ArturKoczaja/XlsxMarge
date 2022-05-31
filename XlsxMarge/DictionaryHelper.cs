@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 
@@ -8,7 +9,8 @@ namespace XlsxMarge
     {
         public Dictionary<int, string> CreateTmpSharedStringsDictionary(SheetEntry file)
         {
-            var xDocSharedStrings = XDocument.Load(file.StreamForSharedStringsFile);
+            var stringStream = new MemoryStream(file.stringsBytes);
+            var xDocSharedStrings = XDocument.Load(stringStream);
             IEnumerable<KeyValuePair<int, string>> strings = xDocSharedStrings
                 .Root
                 .Descendants()

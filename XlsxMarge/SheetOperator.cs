@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using System.Xml.Linq;
 
 namespace XlsxMarge
@@ -8,7 +9,9 @@ namespace XlsxMarge
     {
         public IEnumerable<List<Cell>> ReadRows(SheetEntry file)
         {
-            var xDocSheet = XDocument.Load(file.StreamForSheetFile);
+
+            string xmlText = Encoding.ASCII.GetString(file.sheetBytes);
+            var xDocSheet = XDocument.Parse(xmlText);
             var xxx = xDocSheet
                 .Root
                 .Descendants()

@@ -5,6 +5,6 @@ namespace XlsxMarge
 {
     public interface IXlsxFileMergingService
     {
-        Stream MergeFiles(IEnumerable<SheetEntry> files, string inputFilePath, string outputFilePath);
+        byte[] MergeFiles(List<byte[]> inputFilesBytes);
     }
 }

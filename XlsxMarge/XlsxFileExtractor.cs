@@ -7,28 +7,30 @@ namespace XlsxMarge
 {
     public class XlsxFileExtractor
     {
-        public List<SheetEntry> UnzipXlsxFiles(string[] inputFiles)
+        private IEnumerable<byte[]> data;
+
+        public List<SheetEntry> UnzipXlsxFiles(List<byte[]> inputBytes)
         {
             var sheets = new List<SheetEntry>();
 
-            foreach (var file in inputFiles)
+            foreach (var fileBytes in inputBytes)
             {
-                sheets.Add(ExtractSheetFiles(file));
+                sheets.Add(ExtractSheetFiles(fileBytes));
             }
 
             return sheets;
         }
 
-        private SheetEntry ExtractSheetFiles(string file)
+        private SheetEntry ExtractSheetFiles(byte [] bytes)
         {
-            using (var fileStream = File.OpenRead(file))
+            using (var fileStream = new MemoryStream(bytes))
             {
                 using (var zipEntries = new ZipFile(fileStream))
                 {
                     int counter = 0;
 
-                    MemoryStream sheetStream = null;
-                    MemoryStream stringStream = null;
+                    byte[] sheetArray = null;
+                    byte[] stringsArray = null;
 
                     foreach (ZipEntry zipEntry in zipEntries)
                     {
@@ -40,15 +42,14 @@ namespace XlsxMarge
                         string entryFileName = zipEntry.Name;
                         if (entryFileName == FilesName.SheetName)
                         {
-                            sheetStream = ZipEntryToStream(zipEntries, zipEntry);
-                            sheetStream.Position = 0;
+                            sheetArray = ZipEntryToStream(zipEntries, zipEntry);
+
                             counter++;
                         }
 
                         if (entryFileName == FilesName.SharedStringsName)
                         {
-                            stringStream = ZipEntryToStream(zipEntries, zipEntry);
-                            stringStream.Position = 0;
+                            stringsArray = ZipEntryToStream(zipEntries, zipEntry);
                             counter++;
                         }
 
@@ -59,29 +60,30 @@ namespace XlsxMarge
                         }
                     }
 
-                    if (sheetStream is null || stringStream is null)
+                    if (sheetArray is null || stringsArray is null)
                     {
                         return null;
                     }
 
                     return new SheetEntry()
                     {
-                        FileName = file,
-                        StreamForSheetFile = sheetStream,
-                        StreamForSharedStringsFile = stringStream
+                        sheetBytes = sheetArray,
+                        stringsBytes = stringsArray,
+                        Data = data
                     };
                 }
             }
         }
 
-        private MemoryStream ZipEntryToStream(ZipFile zf, ZipEntry zipEntry)
+        private byte [] ZipEntryToStream(ZipFile zf, ZipEntry zipEntry)
         {
             byte[] buffer = new byte[4096];     // 4K is optimum
             Stream zipStream = zf.GetInputStream(zipEntry);
-            MemoryStream streamWriter = new MemoryStream();
 
+            using MemoryStream streamWriter = new MemoryStream();
             StreamUtils.Copy(zipStream, streamWriter, buffer);
-            return streamWriter;
+            streamWriter.Position = 0;
+            return streamWriter.ToArray();
 
         }
     }

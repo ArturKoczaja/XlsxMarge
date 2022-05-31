@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Security.Cryptography;
 using System.Xml.Linq;
 using ICSharpCode.SharpZipLib.Zip;
 
@@ -12,19 +13,25 @@ namespace XlsxMarge
         private readonly SheetOperator _sheetOperator;
         private readonly DictionaryHelper _dictionaryHelper;
         private readonly FileOperator _fileOperator;
-
+        private readonly XlsxFileExtractor _fileExtractor;
+        
         public XlsxFileMergingService(
-            SheetOperator sheetOperator, 
-            DictionaryHelper dictionaryHelper,
-            FileOperator fileOperator)
+             SheetOperator sheetOperator,
+             DictionaryHelper dictionaryHelper,
+             FileOperator fileOperator,
+             XlsxFileExtractor fileExtractor)
         {
             _sheetOperator = sheetOperator;
             _dictionaryHelper = dictionaryHelper;
             _fileOperator = fileOperator;
+            _fileExtractor = fileExtractor;
         }
 
-        public Stream MergeFiles(IEnumerable<SheetEntry> files, string inputFilePath, string outputFilePath)
+        public byte[] MergeFiles(List<byte[]> inputFilesBytes)
         {
+            var files = _fileExtractor.UnzipXlsxFiles(inputFilesBytes);
+
+
             var allRows = new List<List<Cell>>();
             var addHeaders = true;
 
@@ -38,24 +45,14 @@ namespace XlsxMarge
             }
 
             var allSharedStrings = _dictionaryHelper.CreateSharedStringsDictionary(allRows);
-
-            PrepareOutputFile(inputFilePath, outputFilePath, allRows, allSharedStrings);
-
-            throw new NotImplementedException();
+            return PrepareOutputBytes(inputFilesBytes[0], allRows, allSharedStrings);
         }
 
         #region SheetMerging
 
-        private void PrepareOutputFile(string filePath, string outputPath, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
+        private byte[] PrepareOutputBytes(byte[] templateFileBytes, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
         {
-            if (File.Exists(outputPath))
-            {
-                File.Delete(outputPath);
-            }
-
-            File.Copy(filePath, outputPath);
-
-            using var fileStream = File.OpenRead(outputPath);
+            using var fileStream = new MemoryStream(templateFileBytes);
             using var zipFile = new ZipFile(fileStream);
 
             MemoryStream sheetStream = null;
@@ -78,6 +75,8 @@ namespace XlsxMarge
             zipFile.Add(stringsDataSource, FilesName.SharedStringsName);
 
             zipFile.CommitUpdate();
+
+            return fileStream.ToArray();
         }
 
         private static MemoryStream ReplaceSheetData(MemoryStream sheetStream, List<List<Cell>> allRows, Dictionary<string, long> allSharedStrings)
@@ -154,10 +153,10 @@ namespace XlsxMarge
 
             // TODO refactor 
             return from c1 in alphabet
-                from c2 in alphabet
-                from c3 in alphabet.Skip(1)                    // c3 is never empty
-                where c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also empty
-                select c1 + c2 + c3;                 // c3 is never emptywhere c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also emptyselect c1 + c2 + c3;
+                   from c2 in alphabet
+                   from c3 in alphabet.Skip(1)                    // c3 is never empty
+                   where c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also empty
+                   select c1 + c2 + c3;                 // c3 is never emptywhere c1 == string.Empty || c2 != string.Empty // only allow c2 to be empty if c1 is also emptyselect c1 + c2 + c3;
         }
 
         #endregion
