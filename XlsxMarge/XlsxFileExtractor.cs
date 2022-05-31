@@ -40,22 +40,24 @@ namespace XlsxMarge
                         }
 
                         string entryFileName = zipEntry.Name;
-                        if (entryFileName == FilesName.SheetName)
+                        if (entryFileName == FileNames.SheetName || entryFileName == FileNames.SharedStringsName)
                         {
-                            sheetArray = ZipEntryToStream(zipEntries, zipEntry);
-
-                            counter++;
-                        }
-
-                        if (entryFileName == FilesName.SharedStringsName)
-                        {
-                            stringsArray = ZipEntryToStream(zipEntries, zipEntry);
+                            switch (entryFileName)
+                            {
+                                case FileNames.SheetName:
+                                    sheetArray = ZipEntryToBytes(zipEntries, zipEntry);
+                                    break;
+                                case FileNames.SharedStringsName:
+                                    stringsArray = ZipEntryToBytes(zipEntries, zipEntry);
+                                    break;
+                            }
                             counter++;
                         }
 
                         if (counter == 2)
                         {
                             // if both files read we can stop
+                            
                             break;
                         }
                     }
@@ -68,19 +70,18 @@ namespace XlsxMarge
                     return new SheetEntry()
                     {
                         sheetBytes = sheetArray,
-                        stringsBytes = stringsArray,
-                        Data = data
+                        stringsBytes = stringsArray
                     };
                 }
             }
         }
 
-        private byte [] ZipEntryToStream(ZipFile zf, ZipEntry zipEntry)
+        private byte [] ZipEntryToBytes(ZipFile zf, ZipEntry zipEntry)
         {
             byte[] buffer = new byte[4096];     // 4K is optimum
             Stream zipStream = zf.GetInputStream(zipEntry);
 
-            using MemoryStream streamWriter = new MemoryStream();
+            MemoryStream streamWriter = new MemoryStream();
             StreamUtils.Copy(zipStream, streamWriter, buffer);
             streamWriter.Position = 0;
             return streamWriter.ToArray();

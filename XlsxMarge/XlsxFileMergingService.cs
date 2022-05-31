@@ -14,7 +14,7 @@ namespace XlsxMarge
         private readonly DictionaryHelper _dictionaryHelper;
         private readonly FileOperator _fileOperator;
         private readonly XlsxFileExtractor _fileExtractor;
-        
+
         public XlsxFileMergingService(
              SheetOperator sheetOperator,
              DictionaryHelper dictionaryHelper,
@@ -55,31 +55,34 @@ namespace XlsxMarge
             using var fileStream = new MemoryStream(templateFileBytes);
             using var zipFile = new ZipFile(fileStream);
 
-            MemoryStream sheetStream = null;
-            MemoryStream stringsStream = null;
+            using var sheetStream = _fileOperator.ReadFileToStream(zipFile, FileNames.SheetName);
+            using var stringsStream = _fileOperator.ReadFileToStream(zipFile, FileNames.SharedStringsName);
 
-            _fileOperator.ReadFileToByteArrays(zipFile, ref sheetStream, ref stringsStream);
             _fileOperator.RemoveSheetAndStringsFiles(zipFile);
 
-            var outSheetStream = ReplaceSheetData(sheetStream, allRows, allStrings);
-            var outStringsStream = ReplaceStringsData(stringsStream, allStrings);
+            using var outSheetStream = ReplaceSheetData(sheetStream, allRows, allStrings);
+            using var outStringsStream = ReplaceStringsData(stringsStream, allStrings);
 
             zipFile.BeginUpdate();
 
             var sheetDataSource = new XlsxMarge.CustomStaticDataSource();
             sheetDataSource.SetStream(outSheetStream);
-            zipFile.Add(sheetDataSource, FilesName.SheetName);
-
+            zipFile.Add(sheetDataSource, FileNames.SheetName);
+            
             var stringsDataSource = new XlsxMarge.CustomStaticDataSource();
             stringsDataSource.SetStream(outStringsStream);
-            zipFile.Add(stringsDataSource, FilesName.SharedStringsName);
+            zipFile.Add(stringsDataSource, FileNames.SharedStringsName);
 
             zipFile.CommitUpdate();
 
+
+            //zipFile.Close();
+
+            // fileStream.Flush();
             return fileStream.ToArray();
         }
 
-        private static MemoryStream ReplaceSheetData(MemoryStream sheetStream, List<List<Cell>> allRows, Dictionary<string, long> allSharedStrings)
+        private MemoryStream ReplaceSheetData(MemoryStream sheetStream, List<List<Cell>> allRows, Dictionary<string, long> allSharedStrings)
         {
             var xDocSheet = XDocument.Load(sheetStream);
 
@@ -117,10 +120,8 @@ namespace XlsxMarge
                 rowCounter++;
             }
 
-
-            var outputStream = new MemoryStream();
+            MemoryStream outputStream = new MemoryStream();
             xDocSheet.Save(outputStream);
-            // Rewind the stream ready to read from it elsewhere
             outputStream.Position = 0;
             return outputStream;
         }
@@ -139,9 +140,8 @@ namespace XlsxMarge
                 xDocStrings.Root.Add(siElement);
             }
 
-            var outputStream = new MemoryStream();
+            MemoryStream outputStream = new MemoryStream();
             xDocStrings.Save(outputStream);
-            // Rewind the stream ready to read from it elsewhere
             outputStream.Position = 0;
 
             return outputStream;

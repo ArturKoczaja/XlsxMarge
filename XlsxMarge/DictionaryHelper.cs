@@ -9,7 +9,7 @@ namespace XlsxMarge
     {
         public Dictionary<int, string> CreateTmpSharedStringsDictionary(SheetEntry file)
         {
-            var stringStream = new MemoryStream(file.stringsBytes);
+            using var stringStream = new MemoryStream(file.stringsBytes);
             var xDocSharedStrings = XDocument.Load(stringStream);
             IEnumerable<KeyValuePair<int, string>> strings = xDocSharedStrings
                 .Root

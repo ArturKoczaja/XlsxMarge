@@ -6,8 +6,33 @@ namespace XlsxMarge
 {
     public class FileOperator
     {
-        public void ReadFileToByteArrays(ZipFile zipFile, ref MemoryStream sheetStream, ref MemoryStream stringsStream)
+        //public void ReadFilesToByteArrays(ZipFile zipFile, ref MemoryStream sheetStream, ref MemoryStream stringsStream)
+        //{
+        //    foreach (ZipEntry zipEntry in zipFile)
+        //    {
+        //        if (!zipEntry.IsFile)
+        //        {
+        //            continue; // Ignore directories
+        //        }
+
+        //        string entryFileName = zipEntry.Name;
+        //        if (entryFileName == FileNames.SheetName)
+        //        {
+        //            sheetStream = ZipEntryToStream(zipFile, zipEntry);
+        //            sheetStream.Position = 0;
+        //        }
+
+        //        if (entryFileName == FileNames.SharedStringsName)
+        //        {
+        //            stringsStream = ZipEntryToStream(zipFile, zipEntry);
+        //            stringsStream.Position = 0;
+        //        }
+        //    }
+        //}
+
+        public MemoryStream ReadFileToStream(ZipFile zipFile, string entryName)
         {
+            MemoryStream outStream = null;
             foreach (ZipEntry zipEntry in zipFile)
             {
                 if (!zipEntry.IsFile)
@@ -15,19 +40,12 @@ namespace XlsxMarge
                     continue; // Ignore directories
                 }
 
-                string entryFileName = zipEntry.Name;
-                if (entryFileName == FilesName.SheetName)
+                if (zipEntry.Name == entryName)
                 {
-                    sheetStream = ZipEntryToStream(zipFile, zipEntry);
-                    sheetStream.Position = 0;
-                }
-
-                if (entryFileName == FilesName.SharedStringsName)
-                {
-                    stringsStream = ZipEntryToStream(zipFile, zipEntry);
-                    stringsStream.Position = 0;
+                    outStream = ZipEntryToStream(zipFile, zipEntry);
                 }
             }
+            return outStream;
         }
 
         public void RemoveSheetAndStringsFiles(ZipFile zipFile)
@@ -42,12 +60,12 @@ namespace XlsxMarge
                 }
 
                 var entryFileName = zipEntry.Name;
-                if (entryFileName == FilesName.SheetName)
+                if (entryFileName == FileNames.SheetName)
                 {
                     zipFile.Delete(zipEntry);
                 }
 
-                if (entryFileName == FilesName.SharedStringsName)
+                if (entryFileName == FileNames.SharedStringsName)
                 {
                     zipFile.Delete(zipEntry);
                 }
@@ -58,12 +76,15 @@ namespace XlsxMarge
 
         private MemoryStream ZipEntryToStream(ZipFile zipFile, ZipEntry zipEntry)
         {
-            byte[] buffer = new byte[4096];     // 4K is optimum
-            Stream zipStream = zipFile.GetInputStream(zipEntry);
-            MemoryStream streamWriter = new MemoryStream();
-            StreamUtils.Copy(zipStream, streamWriter, buffer);
+            byte[] buffer = new byte[4096];
+            MemoryStream outStream = new MemoryStream();;// 4K is optimum
 
-            return streamWriter;
+            using (var zipStream = zipFile.GetInputStream(zipEntry))
+            {
+                StreamUtils.Copy(zipStream, outStream, buffer);
+            }
+            outStream.Position = 0;
+            return outStream;
         }
     }
 }
