@@ -30,8 +30,6 @@ namespace XlsxMarge
         public byte[] MergeFiles(List<byte[]> inputFilesBytes)
         {
             var files = _fileExtractor.UnzipXlsxFiles(inputFilesBytes);
-
-
             var allRows = new List<List<Cell>>();
             var addHeaders = true;
 
@@ -52,29 +50,37 @@ namespace XlsxMarge
 
         private byte[] PrepareOutputBytes(byte[] templateFileBytes, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
         {
-            using var fileStream = new MemoryStream(templateFileBytes);
+            using var inputStream = new MemoryStream(templateFileBytes);
+            using var fileStream = new MemoryStream();
+            inputStream.CopyTo(fileStream);
+            //fileStream.Read(templateFileBytes, 0, templateFileBytes.Length);
+            //fileStream.Position = 0;
+
+
             using var zipFile = new ZipFile(fileStream);
 
             using var sheetStream = _fileOperator.ReadFileToStream(zipFile, FileNames.SheetName);
             using var stringsStream = _fileOperator.ReadFileToStream(zipFile, FileNames.SharedStringsName);
+
+            zipFile.BeginUpdate();
 
             _fileOperator.RemoveSheetAndStringsFiles(zipFile);
 
             using var outSheetStream = ReplaceSheetData(sheetStream, allRows, allStrings);
             using var outStringsStream = ReplaceStringsData(stringsStream, allStrings);
 
-            zipFile.BeginUpdate();
-
             var sheetDataSource = new XlsxMarge.CustomStaticDataSource();
             sheetDataSource.SetStream(outSheetStream);
             zipFile.Add(sheetDataSource, FileNames.SheetName);
-            
+
             var stringsDataSource = new XlsxMarge.CustomStaticDataSource();
             stringsDataSource.SetStream(outStringsStream);
             zipFile.Add(stringsDataSource, FileNames.SharedStringsName);
 
+
             zipFile.CommitUpdate();
 
+            //fileStream.SetLength(fileStream.Position);
 
             //zipFile.Close();
 

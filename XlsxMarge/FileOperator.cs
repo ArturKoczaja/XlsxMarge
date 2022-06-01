@@ -50,8 +50,6 @@ namespace XlsxMarge
 
         public void RemoveSheetAndStringsFiles(ZipFile zipFile)
         {
-            zipFile.BeginUpdate();
-
             foreach (ZipEntry zipEntry in zipFile)
             {
                 if (!zipEntry.IsFile)
@@ -70,14 +68,12 @@ namespace XlsxMarge
                     zipFile.Delete(zipEntry);
                 }
             }
-
-            zipFile.CommitUpdate();
         }
 
         private MemoryStream ZipEntryToStream(ZipFile zipFile, ZipEntry zipEntry)
         {
             byte[] buffer = new byte[4096];
-            MemoryStream outStream = new MemoryStream();;// 4K is optimum
+            MemoryStream outStream = new MemoryStream(); ;// 4K is optimum
 
             using (var zipStream = zipFile.GetInputStream(zipEntry))
             {
