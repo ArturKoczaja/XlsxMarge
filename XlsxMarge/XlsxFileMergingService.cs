@@ -50,13 +50,9 @@ namespace XlsxMarge
 
         private byte[] PrepareOutputBytes(byte[] templateFileBytes, List<List<Cell>> allRows, Dictionary<string, long> allStrings)
         {
-            using var inputStream = new MemoryStream(templateFileBytes);
             using var fileStream = new MemoryStream();
-            inputStream.CopyTo(fileStream);
-            //fileStream.Read(templateFileBytes, 0, templateFileBytes.Length);
-            //fileStream.Position = 0;
-
-
+            fileStream.Write(templateFileBytes, 0, templateFileBytes.Length);
+            
             using var zipFile = new ZipFile(fileStream);
 
             using var sheetStream = _fileOperator.ReadFileToStream(zipFile, FileNames.SheetName);
@@ -77,14 +73,8 @@ namespace XlsxMarge
             stringsDataSource.SetStream(outStringsStream);
             zipFile.Add(stringsDataSource, FileNames.SharedStringsName);
 
-
             zipFile.CommitUpdate();
 
-            //fileStream.SetLength(fileStream.Position);
-
-            //zipFile.Close();
-
-            // fileStream.Flush();
             return fileStream.ToArray();
         }
 
