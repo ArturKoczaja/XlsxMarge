@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Xml.Linq;
 
@@ -63,23 +64,22 @@ namespace XlsxMarge
 
             foreach (var cell in row)
             {
+                var newCell = new Cell()
+                {
+                    Translate = cell.Translate,
+                    Style = cell.Style
+                };
+
                 if (cell.Translate)
                 {
                     int.TryParse(cell.Value, out var index);
-                    result.Add(new Cell()
-                    {
-                        Translate = cell.Translate,
-                        Value = tmpDictionary[index]
-                    });
+                    newCell.Value = tmpDictionary[index];
                 }
                 else
                 {
-                    result.Add(new Cell()
-                    {
-                        Translate = cell.Translate,
-                        Value = cell.Value
-                    });
+                    newCell.Value = cell.Value;
                 }
+                result.Add(newCell);
             }
 
             return result;
