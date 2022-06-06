@@ -20,10 +20,11 @@ namespace XlsxMarge
             var rows = xxx
                 .Select(row => row.Descendants()
                     .Where(n => n.Name.LocalName == "c")
-                    .Select(n => new Cell()
+                    .Select((n, i) => new Cell()
                     {
                         Translate = n.Attributes().FirstOrDefault(a => a.Name.LocalName == "t")?.Value == "s",
-                        Value = n.Value
+                        Value = n.Value,
+                        Style = n.Attributes().First(a => a.Name.LocalName == "s").Value
                     })
                     .ToList());
 

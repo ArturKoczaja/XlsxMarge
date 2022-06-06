@@ -104,7 +104,7 @@ namespace XlsxMarge
                     var vElement = new XElement(xNamespace + "v", col.Translate ? allSharedStrings[col.Value] : col.Value);
                     var cElement = new XElement(xNamespace + "c", vElement,
                         new XAttribute("r", $"{columnNameArray[columnCounter]}{rowCounter + 1}"),
-                        new XAttribute("s", rowCounter == 0 ? "2" : col.Translate ? "1" : "3"),
+                        new XAttribute("s", col.Style),
                         new XAttribute("t", col.Translate ? "s" : "")
                     );
 
