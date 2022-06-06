@@ -96,7 +96,7 @@ namespace XlsxMarge
             int rowCounter = 0;
             foreach (var row in allRows)
             {
-                var rowElement = new XElement(xNamespaceWithRow, new XAttribute("r", rowCounter + 1), new XAttribute("spans", "1:15"), new XAttribute("ht", "12,75"));
+                var rowElement = new XElement(xNamespaceWithRow, new XAttribute("r", rowCounter + 1), new XAttribute("spans", $"1:{row.Count()}"));
                 int columnCounter = 0;
 
                 foreach (var col in row)
